@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Ask About a Movie Script</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+
+        form {
+            margin-top: 20px;
+        }
+
+        div {
+            margin-bottom: 15px;
+            position: relative;
+            /* Needed for positioning the suggestions box */
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 80%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* --- Styles for Suggestions Box --- */
+        #suggestions-box {
+            position: absolute;
+            /* Position relative to the parent div */
+            top: 100%;
+            /* Place it just below the input */
+            left: 0;
+            right: 20%;
+            /* Align width with the input */
+            border: 1px solid #ccc;
+            border-top: none;
+            background-color: white;
+            z-index: 10;
+            /* Ensure it appears above other content */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-height: 150px;
+            /* Limit height and make it scrollable */
+            overflow-y: auto;
+            display: none;
+            /* Hidden by default */
+        }
+
+        #suggestions-box div {
+            padding: 8px;
+            cursor: pointer;
+            margin-bottom: 0;
+            /* Remove margin between suggestion items */
+            border-bottom: 1px solid #eee;
+            /* Separator */
+        }
+
+        #suggestions-box div:last-child {
+            border-bottom: none;
+            /* No separator for the last item */
+        }
+
+        #suggestions-box div:hover {
+            background-color: #f0f0f0;
+            /* Highlight on hover */
+        }
+
+        /* --- End Styles for Suggestions Box --- */
+    </style>
+</head>
+
+<body>
+    <h1>Ask a Question About a Movie Script</h1>
+    <p>Enter a movie title (as it appears on IMSDb.com) and ask a question based on the script.</p>
+
+    <form action="{{ url_for('ask_movie_question') }}" method="post">
+        <div>
+            <label for="movie_title">Movie Title:</label>
+            <input type="text" id="movie_title" name="movie_title" required placeholder="e.g., Pulp Fiction">
+            <div id="suggestions-box"></div>
+        </div>
+        <div>
+            <label for="user_question">Your Question:</label>
+            <textarea id="user_question" name="user_question" rows="4" required
+                placeholder="e.g., What is the conversation about a Royale with Cheese?"></textarea>
+        </div>
+        <div>
+            <button type="submit">Get Answer</button>
+        </div>
+    </form>
+
+    <script>
+        // Get references to the input and the suggestions box
+        const movieTitleInput = document.getElementById('movie_title');
+        const suggestionsBox = document.getElementById('suggestions-box');
+
+        // Add an event listener for input changes
+        movieTitleInput.addEventListener('input', async () => {
+            const query = movieTitleInput.value.trim();
+
+            // Clear previous suggestions
+            suggestionsBox.innerHTML = '';
+            suggestionsBox.style.display = 'none'; // Hide the box initially
+
+            // Only fetch suggestions if the query is not empty and has at least 2 characters
+            if (query.length > 1) {
+                try {
+                    // Use the fetch API to make a GET request to your Flask endpoint
+                    // Encode the query to handle spaces and special characters in the URL
+                    const response = await fetch(`/suggest_movies?query=${encodeURIComponent(query)}`);
+
+                    // Check if the request was successful
+                    if (!response.ok) {
+                        console.error('Failed to fetch suggestions:', response.statusText);
+                        return; // Stop if there's an error
+                    }
+
+                    // Parse the JSON response
+                    const suggestions = await response.json();
+
+                    // Display the suggestions
+                    if (suggestions.length > 0) {
+                        suggestions.forEach(suggestion => {
+                            const suggestionElement = document.createElement('div');
+                            suggestionElement.textContent = suggestion; // Display the movie title
+
+                            // Make suggestion clickable
+                            suggestionElement.addEventListener('click', () => {
+                                movieTitleInput.value = suggestion; // Put suggestion into input
+                                suggestionsBox.innerHTML = ''; // Clear suggestions
+                                suggestionsBox.style.display = 'none'; // Hide suggestions box
+                            });
+
+                            suggestionsBox.appendChild(suggestionElement); // Add to the box
+                        });
+                        suggestionsBox.style.display = 'block'; // Show the box if there are suggestions
+                    }
+
+                } catch (error) {
+                    console.error('Error fetching suggestions:', error);
+                    // Optionally display an error message in the suggestions box
+                    // suggestionsBox.innerHTML = '<div>Error loading suggestions</div>';
+                    // suggestionsBox.style.display = 'block';
+                }
+            }
+        });
+
+        // Optional: Hide suggestions when clicking outside the input/suggestions box
+        document.addEventListener('click', (event) => {
+            // Check if the click was outside the input and outside the suggestions box
+            if (!movieTitleInput.contains(event.target) && !suggestionsBox.contains(event.target)) {
+                suggestionsBox.innerHTML = ''; // Clear suggestions
+                suggestionsBox.style.display = 'none'; // Hide suggestions box
+            }
+        });
+
+    </script>
+
+</body>
+
+</html>

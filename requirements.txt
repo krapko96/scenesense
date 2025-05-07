@@ -1,0 +1,6 @@
+flask==3.1.0 # Or a recent version
+beautifulsoup4==4.13.4 # Or a recent version
+requests==2.32.3 # Or a recent version
+langchain==0.3.25 # Or a recent version
+langchain-community==0.3.23 # Or a recent version
+gunicorn==23.0.0 # Used by hosting platforms to run the app
