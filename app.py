@@ -8,6 +8,7 @@ try:
     from langchain_community.document_loaders import IMSDbLoader
     from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain.chains.question_answering import load_qa_chain
+    from langchain.chains import LLMChain
     from langchain.schema import Document
     from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 except ImportError:
@@ -16,6 +17,7 @@ except ImportError:
     from langchain.document_loaders import IMSDbLoader
     from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain.chains.question_answering import load_qa_chain
+    from langchain.chains import LLMChain
     from langchain.schema import Document
     from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
@@ -174,43 +176,24 @@ def ask_movie_question():
 
     # 2. Use Langchain QA chain to answer the question
     try:
-        # Updated prompt to be more conversational and context-aware
-        prompt_template = ChatPromptTemplate.from_messages([
-            SystemMessagePromptTemplate.from_template(
-                "You are a helpful movie script expert. Your goal is to answer questions based ONLY on the provided movie script content. "
-                "Do not use any external knowledge. If the answer isn't in the script, say so. "
-                "Be concise and directly answer the user's question."
-                "If the user asks about a character, focus on their actions, dialogue, and descriptions within the script up to the point relevant to their query (if specified)."
-                "If the user seems confused or asks for a recap, summarize key plot points and character involvements from the script relevant to their query."
-                "Avoid spoilers beyond what would be known at a certain point if the user indicates their viewing progress."
-            ),
-            HumanMessagePromptTemplate.from_template("Context from script:\n-----\n{context}\n-----\nQuestion: {question}")
-        ])
-        
-        # Recreate the chain with the new prompt if you want to use this detailed prompt with "stuff"
-        # For "map_reduce", the prompt is handled differently within the chain's map and combine steps.
-        # If using "stuff", you might pass the prompt directly or structure it for the chain's `run` or `invoke` method.
-        # The `load_qa_chain` with `chain_type="stuff"` generally takes a prompt for the llm_chain it creates.
-        # Let's try a simpler direct question for now, assuming the system message of the ChatGoogleGenerativeAI and the chain handle it.
-        
-        # Your existing qa_chain (e.g., `stuff` or `map_reduce`)
-        # The `run` method typically takes `input_documents` and the `question`.
-        # The prompt you constructed earlier can be part of the `question` input.
+        prompt_string = f"""You are a helpful movie script expert. Your goal is to answer questions based ONLY on the provided movie script content. "
+            Do not use any external knowledge. If the answer isn't in the script, say so. 
+            Be concise and directly answer the user's question.
+            If the user asks about a character, focus on their actions, dialogue, and descriptions within the script up to the point relevant to their query (if specified).
+            If the user seems confused or asks for a recap, summarize key plot points and character involvements from the script relevant to their query.
+            Avoid spoilers beyond what would be known at a certain point if the user indicates their viewing progress.
+            Here is a movie script:
+            # --- SCRIPT START ---
+            # {script_documents[0].page_content}
+            # --- SCRIPT END ---
 
-        # Constructing the input for the qa_chain.run
-        # The system-level instructions are good for the ChatGoogleGenerativeAI model's initialization.
-        # For the specific question, we combine the user's question with guidance.
-        
-        # This is the prompt that will be directly processed by the LLM for the given documents
-        # It's important for the "stuff" chain type, as it stuffs all docs into one prompt.
-        # For "map_reduce", you'd have separate map and combine prompts.
-        
-        # Let's stick to the simpler approach of passing the user's question directly,
-        # relying on the LLM's general instruction following capabilities and the chain's design.
-        # The more complex prompt above might be better integrated by customizing the chain's internal prompt template.
+            # Based on this script, please answer the following question:
+            # Question: {user_question}
+            #
+            # Answer:"""
 
-        # If your qa_chain is `load_qa_chain(llm, chain_type="stuff")` it should work with:
-        answer = qa_chain.run(input_documents=script_documents, question=prompt_template)
+        answer = llm.invoke(prompt_string).content
+        
         
         # If you want to use the more detailed ChatPromptTemplate with a "stuff" chain,
         # you might need to customize the underlying LLMChain's prompt within load_qa_chain,
@@ -226,6 +209,7 @@ def ask_movie_question():
         # If the user is asking about a character, be sure to include important plot points up to that point in the movie.
         # """
         # answer = qa_chain.run(input_documents=script_documents, question=prompt_for_llm)
+
 
 
         print(f"Successfully generated answer for '{movie_title}'.")
