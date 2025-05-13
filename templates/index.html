@@ -1,179 +1,433 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>Ask About a Movie Script</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat About a Movie Script</title>
     <style>
         body {
-            font-family: sans-serif;
-            margin: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        h1 {
+            color: #007bff;
+            text-align: center;
+            margin-bottom: 25px;
         }
 
         form {
             margin-top: 20px;
+            display: flex;
+            flex-direction: column;
         }
 
-        div {
-            margin-bottom: 15px;
+        .form-group {
+            margin-bottom: 20px;
             position: relative;
-            /* Needed for positioning the suggestions box */
         }
 
         label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
         }
 
         input[type="text"],
         textarea {
-            width: 80%;
-            padding: 8px;
+            width: 100%;
+            padding: 12px;
             box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.2s ease-in-out;
         }
 
-        button {
-            padding: 10px 20px;
+        input[type="text"]:focus,
+        textarea:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        button[type="submit"] {
+            padding: 12px 25px;
             background-color: #007bff;
             color: white;
             border: none;
             cursor: pointer;
-            border-radius: 4px;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background-color 0.2s ease-in-out;
+            align-self: flex-start;
+            /* Align button to the start of the flex container */
         }
 
-        button:hover {
+        button[type="submit"]:hover {
             background-color: #0056b3;
+        }
+
+        button[type="submit"]:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
         }
 
         /* --- Styles for Suggestions Box --- */
         #suggestions-box {
             position: absolute;
-            /* Position relative to the parent div */
             top: 100%;
-            /* Place it just below the input */
             left: 0;
-            right: 20%;
-            /* Align width with the input */
-            border: 1px solid #ccc;
+            right: 0;
+            /* Make it full width of the form-group */
+            border: 1px solid #ddd;
             border-top: none;
             background-color: white;
-            z-index: 10;
-            /* Ensure it appears above other content */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            max-height: 150px;
-            /* Limit height and make it scrollable */
+            z-index: 1000;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+            max-height: 200px;
             overflow-y: auto;
             display: none;
             /* Hidden by default */
+            border-radius: 0 0 5px 5px;
         }
 
         #suggestions-box div {
-            padding: 8px;
+            padding: 10px 12px;
             cursor: pointer;
-            margin-bottom: 0;
-            /* Remove margin between suggestion items */
             border-bottom: 1px solid #eee;
-            /* Separator */
         }
 
         #suggestions-box div:last-child {
             border-bottom: none;
-            /* No separator for the last item */
         }
 
         #suggestions-box div:hover {
             background-color: #f0f0f0;
-            /* Highlight on hover */
         }
 
-        /* --- End Styles for Suggestions Box --- */
+        /* --- Styles for Chat Display --- */
+        #chat-display {
+            margin-top: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 15px;
+            max-height: 400px;
+            /* Or your preferred height */
+            overflow-y: auto;
+            background-color: #f9f9f9;
+        }
+
+        .chat-message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            word-wrap: break-word;
+            /* Ensure long words break */
+        }
+
+        .user-message {
+            background-color: #e1f5fe;
+            /* Light blue for user */
+            text-align: right;
+            margin-left: auto;
+            /* Push to the right */
+            max-width: 80%;
+        }
+
+        .user-message p strong {
+            color: #01579b;
+            /* Darker blue for user label */
+        }
+
+        .bot-message {
+            background-color: #e8f5e9;
+            /* Light green for bot */
+            text-align: left;
+            margin-right: auto;
+            /* Push to the left */
+            max-width: 80%;
+        }
+
+        .bot-message p strong {
+            color: #1b5e20;
+            /* Darker green for bot label */
+        }
+
+        .bot-message pre {
+            /* Style for preformatted text in bot's answer */
+            white-space: pre-wrap;
+            /* Allows text to wrap */
+            word-wrap: break-word;
+            /* Breaks long words */
+            background-color: transparent;
+            padding: 0;
+            margin: 0;
+            font-family: inherit;
+            /* Inherit font from parent */
+            font-size: 0.95rem;
+        }
+
+        .loading-indicator {
+            text-align: center;
+            padding: 10px;
+            font-style: italic;
+            color: #777;
+        }
+
+        .error-message {
+            color: #D8000C;
+            /* Red for errors */
+            background-color: #FFD2D2;
+            /* Light red background */
+            border: 1px solid #D8000C;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
     </style>
 </head>
 
 <body>
-    <h1>Ask a Question About a Movie Script</h1>
-    <p>Enter a movie title (as it appears on IMSDb.com) and ask a question based on the script.</p>
+    <div class="container">
+        <h1>Chat About a Movie Script</h1>
+        <p>Enter a movie title (as it appears on IMSDb.com or your list) and ask a question. The AI will use the script
+            to answer.</p>
 
-    <form action="{{ url_for('ask_movie_question') }}" method="post">
-        <div>
-            <label for="movie_title">Movie Title:</label>
-            <input type="text" id="movie_title" name="movie_title" required placeholder="e.g., Pulp Fiction">
-            <div id="suggestions-box"></div>
+        <form id="chat-form">
+            <div class="form-group">
+                <label for="movie_title">Movie Title:</label>
+                <input type="text" id="movie_title" name="movie_title" required placeholder="e.g., Pulp Fiction">
+                <div id="suggestions-box"></div>
+            </div>
+            <div class="form-group">
+                <label for="user_question">Your Question:</label>
+                <textarea id="user_question" name="user_question" rows="3" required
+                    placeholder="e.g., What is the conversation about a Royale with Cheese?"></textarea>
+            </div>
+            <div>
+                <button type="submit" id="submit-button">Send</button>
+            </div>
+        </form>
+
+        <div id="chat-display">
         </div>
-        <div>
-            <label for="user_question">Your Question:</label>
-            <textarea id="user_question" name="user_question" rows="4" required
-                placeholder="e.g., What is the conversation about a Royale with Cheese?"></textarea>
-        </div>
-        <div>
-            <button type="submit">Get Answer</button>
-        </div>
-    </form>
+        <div id="error-display" class="error-message" style="display: none;"></div>
+    </div>
 
     <script>
-        // Get references to the input and the suggestions box
+        const chatForm = document.getElementById('chat-form');
         const movieTitleInput = document.getElementById('movie_title');
+        const userQuestionInput = document.getElementById('user_question');
+        const chatDisplay = document.getElementById('chat-display');
         const suggestionsBox = document.getElementById('suggestions-box');
+        const submitButton = document.getElementById('submit-button');
+        const errorDisplay = document.getElementById('error-display');
 
-        // Add an event listener for input changes
+        let currentMovieTitle = ""; // To keep track of the movie being discussed
+
+        // --- Movie Suggestions Logic ---
         movieTitleInput.addEventListener('input', async () => {
             const query = movieTitleInput.value.trim();
-
-            // Clear previous suggestions
             suggestionsBox.innerHTML = '';
-            suggestionsBox.style.display = 'none'; // Hide the box initially
+            suggestionsBox.style.display = 'none';
 
-            // Only fetch suggestions if the query is not empty and has at least 2 characters
             if (query.length > 1) {
                 try {
-                    // Use the fetch API to make a GET request to your Flask endpoint
-                    // Encode the query to handle spaces and special characters in the URL
                     const response = await fetch(`/suggest_movies?query=${encodeURIComponent(query)}`);
-
-                    // Check if the request was successful
                     if (!response.ok) {
                         console.error('Failed to fetch suggestions:', response.statusText);
-                        return; // Stop if there's an error
+                        return;
                     }
-
-                    // Parse the JSON response
                     const suggestions = await response.json();
-
-                    // Display the suggestions
                     if (suggestions.length > 0) {
-                        suggestions.forEach(suggestion => {
+                        suggestions.forEach(suggestionText => {
                             const suggestionElement = document.createElement('div');
-                            suggestionElement.textContent = suggestion; // Display the movie title
-
-                            // Make suggestion clickable
+                            suggestionElement.textContent = suggestionText;
                             suggestionElement.addEventListener('click', () => {
-                                movieTitleInput.value = suggestion; // Put suggestion into input
-                                suggestionsBox.innerHTML = ''; // Clear suggestions
-                                suggestionsBox.style.display = 'none'; // Hide suggestions box
+                                movieTitleInput.value = suggestionText;
+                                currentMovieTitle = suggestionText; // Set current movie
+                                suggestionsBox.innerHTML = '';
+                                suggestionsBox.style.display = 'none';
+                                userQuestionInput.focus(); // Focus on question input
                             });
-
-                            suggestionsBox.appendChild(suggestionElement); // Add to the box
+                            suggestionsBox.appendChild(suggestionElement);
                         });
-                        suggestionsBox.style.display = 'block'; // Show the box if there are suggestions
+                        suggestionsBox.style.display = 'block';
                     }
-
                 } catch (error) {
                     console.error('Error fetching suggestions:', error);
-                    // Optionally display an error message in the suggestions box
-                    // suggestionsBox.innerHTML = '<div>Error loading suggestions</div>';
-                    // suggestionsBox.style.display = 'block';
                 }
             }
         });
 
-        // Optional: Hide suggestions when clicking outside the input/suggestions box
         document.addEventListener('click', (event) => {
-            // Check if the click was outside the input and outside the suggestions box
             if (!movieTitleInput.contains(event.target) && !suggestionsBox.contains(event.target)) {
-                suggestionsBox.innerHTML = ''; // Clear suggestions
-                suggestionsBox.style.display = 'none'; // Hide suggestions box
+                suggestionsBox.style.display = 'none';
             }
         });
+
+        // --- Chat Form Submission Logic ---
+        chatForm.addEventListener('submit', async function (event) {
+            event.preventDefault(); // Prevent traditional form submission
+
+            const movieTitle = movieTitleInput.value.trim();
+            const userQuestion = userQuestionInput.value.trim();
+
+            if (!movieTitle || !userQuestion) {
+                displayError("Please enter both a movie title and your question.");
+                return;
+            }
+
+            // If the movie title input is different from the currentMovieTitle,
+            // we might consider it a new context or ask the user to confirm.
+            // For now, we'll just use the current input value.
+            if (movieTitle !== currentMovieTitle && currentMovieTitle !== "") {
+                // Optional: Clear chat if movie changes, or add a separator
+                // chatDisplay.innerHTML += `<div class="chat-message system-message"><p><i>Switched to movie: ${movieTitle}</i></p></div>`;
+                console.log(`Movie title changed from "${currentMovieTitle}" to "${movieTitle}"`);
+            }
+            currentMovieTitle = movieTitle;
+
+
+            // Display user's question immediately
+            addMessageToChat(userQuestion, 'user', movieTitle);
+            userQuestionInput.value = ''; // Clear the question input
+            submitButton.disabled = true;
+            addLoadingIndicator();
+            hideError();
+
+
+            try {
+                const response = await fetch("{{ url_for('ask_movie_question') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        movie_title: movieTitle,
+                        user_question: userQuestion
+                    }),
+                });
+
+                removeLoadingIndicator();
+                submitButton.disabled = false;
+
+                if (!response.ok) {
+                    let errorMsg = `Error: ${response.status} ${response.statusText}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMsg = errorData.answer || errorData.error || 'An unknown error occurred.';
+                    } catch (e) { /* Ignore if response is not JSON */ }
+                    addMessageToChat(`Failed to get answer. ${errorMsg}`, 'bot-error', movieTitle);
+                    displayError(`Server error: ${errorMsg}`);
+                    return;
+                }
+
+                const data = await response.json();
+                addMessageToChat(data.answer, 'bot', data.movie_title);
+
+            } catch (error) {
+                removeLoadingIndicator();
+                submitButton.disabled = false;
+                console.error('Network error or other issue:', error);
+                addMessageToChat(`An error occurred while sending your question: ${error.message}`, 'bot-error', movieTitle);
+                displayError(`Network error: ${error.message}`);
+            }
+        });
+
+        function addMessageToChat(message, sender, movieContext = "") {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('chat-message');
+            let senderPrefix = "";
+
+            if (sender === 'user') {
+                messageElement.classList.add('user-message');
+                senderPrefix = "You";
+            } else if (sender === 'bot') {
+                messageElement.classList.add('bot-message');
+                senderPrefix = `Script Bot (${movieContext || currentMovieTitle})`;
+            } else if (sender === 'bot-error') {
+                messageElement.classList.add('bot-message'); // Style like a bot message but indicates error
+                senderPrefix = `Script Bot (${movieContext || currentMovieTitle})`;
+                messageElement.style.backgroundColor = '#ffebee'; // Light red for errors from bot
+                messageElement.style.borderColor = '#c62828';
+            }
+
+
+            // For bot messages, we expect the answer to be preformatted if it's code/script like
+            // For user messages, just paragraph
+            const contentElement = document.createElement('p');
+            contentElement.innerHTML = `<strong>${senderPrefix}:</strong> `; // Use innerHTML to render strong tag
+
+            if (sender === 'bot' || sender === 'bot-error') {
+                // If the message contains newlines, it might be preformatted text
+                if (message.includes('\n')) {
+                    const preElement = document.createElement('pre');
+                    preElement.textContent = message;
+                    contentElement.appendChild(preElement);
+                } else {
+                    contentElement.appendChild(document.createTextNode(message));
+                }
+            } else {
+                contentElement.appendChild(document.createTextNode(message));
+            }
+
+
+            messageElement.appendChild(contentElement);
+            chatDisplay.appendChild(messageElement);
+            chatDisplay.scrollTop = chatDisplay.scrollHeight; // Scroll to the bottom
+        }
+
+        function addLoadingIndicator() {
+            const loadingElement = document.createElement('div');
+            loadingElement.classList.add('loading-indicator');
+            loadingElement.id = 'loading';
+            loadingElement.innerHTML = '<p><em>Thinking...</em></p>';
+            chatDisplay.appendChild(loadingElement);
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
+        }
+
+        function removeLoadingIndicator() {
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.remove();
+            }
+        }
+
+        function displayError(message) {
+            errorDisplay.textContent = message;
+            errorDisplay.style.display = 'block';
+        }
+
+        function hideError() {
+            errorDisplay.style.display = 'none';
+        }
 
     </script>
 

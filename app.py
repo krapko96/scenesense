@@ -65,123 +65,184 @@ except Exception as e:
     print(f"Error initializing LLM or QA chain: {e}")
     print("Ensure GOOGLE_API_KEY is set and valid.")
 
+# --- Helper Function for Scraping Script ---
+# Store scripts in memory to avoid re-scraping for the same movie in a session
+# For a production app, consider a more robust caching mechanism (e.g., Redis, Flask-Caching)
+SCRIPT_CACHE = {}
+
 
 # --- Helper Function for Scraping Script ---
 def scrape_script_given_name(movie_name):
     """
     Scrapes a movie script from IMSDb given the movie name.
     Handles potential errors and returns cleaned text or None.
+    Caches the script to avoid re-scraping.
     """
-    # Format the movie name for the URL (IMSDb uses hyphens)
-    formatted_name = movie_name.split('|')[0].strip() # Take the first part before any '|' character
-    formatted_name = formatted_name.strip().replace(" ", "-").replace("'", "").replace(":", "").replace(",", "").replace("!", "").replace("?", "") # Basic cleaning
+    formatted_name_for_cache = movie_name.strip().lower()
+    if formatted_name_for_cache in SCRIPT_CACHE:
+        print(f"Using cached script for '{movie_name}'")
+        return SCRIPT_CACHE[formatted_name_for_cache]
 
-    url = f'https://imsdb.com/scripts/{formatted_name}.html'
+    # Format the movie name for the URL (IMSDb uses hyphens)
+    # Take the first part before any '|' character if present (from your movies.txt format)
+    core_movie_name = movie_name.split('|')[0].strip()
+    # Basic cleaning for URL
+    formatted_name_for_url = core_movie_name.replace(" ", "-").replace("'", "").replace(":", "").replace(",", "").replace("!", "").replace("?", "")
+    url = f'https://imsdb.com/scripts/{formatted_name_for_url}.html'
 
     try:
-        loader = IMSDbLoader(url)
-        data = loader.load() # data is expected to be a list of Document objects
+        print(f"Attempting to scrape: {url}")
+        loader = IMSDbLoader(url) # Pass the direct URL
+        data = loader.load()
 
         if not data or not data[0].page_content:
-             print(f"IMSDbLoader returned no data or empty content for {movie_name} ({url}).")
-             return None # Indicate script not found or empty
+            print(f"IMSDbLoader returned no data or empty content for {movie_name} ({url}).")
+            SCRIPT_CACHE[formatted_name_for_cache] = None # Cache failure
+            return None
 
-        # The loaded data is typically a list containing one Document
         script_content = data[0].page_content
-
-        # Clean up excessive whitespace (similar to your example)
         cleaned_script = " ".join(script_content.split())
-
-        # Create a Document object from the cleaned script for the QA chain
-        # Adding some metadata could be useful later, but content is enough for now
-        script_document = Document(page_content=cleaned_script)
-
-        return [script_document] # Return as a list containing one Document
-
+        script_document = Document(page_content=cleaned_script, metadata={"source": movie_name})
+        
+        SCRIPT_CACHE[formatted_name_for_cache] = [script_document] # Cache success
+        return [script_document]
 
     except Exception as e:
-        print(f"Error scraping script for '{movie_name}' ({url}): {e}")
-        # This could be due to 404 (script not found), network issues, etc.
-        return None # Indicate failure
+        print(f"Error scraping script for '{movie_name}' from '{url}': {e}")
+        SCRIPT_CACHE[formatted_name_for_cache] = None # Cache failure
+        return None
 
 
 
 
 # --- Flask Routes ---
-
 @app.route('/')
 def index():
-    """Renders the form for entering movie title and question."""
+    """Renders the main chat page."""
     return render_template('index.html')
+
 
 
 @app.route('/ask', methods=['POST'])
 def ask_movie_question():
-    """Scrapes script, asks question using Langchain/Gemini, and displays answer."""
-    movie_title = request.form['movie_title'].strip()
-    user_question = request.form['user_question'].strip()
+    """
+    Receives movie title and question, scrapes script (if not cached),
+    asks question using Langchain/Gemini, and returns JSON response.
+    """
+    data = request.get_json() # Get data as JSON
+    movie_title = data.get('movie_title', '').strip()
+    user_question = data.get('user_question', '').strip()
 
     if not movie_title or not user_question:
-        return redirect(url_for('index')) # Redirect back if inputs are missing
+        return jsonify({
+            "error": "Movie title and question are required."
+        }), 400
 
-    if qa_chain is None:
-         return render_template(
-             'result.html',
-             movie_title=movie_title,
-             user_question=user_question,
-             answer="Error: AI question answering service not available (LLM not initialized). Please check server logs and ensure GOOGLE_API_KEY is set."
-         )
-
+    if qa_chain is None or llm is None:
+        print("Error: QA chain or LLM not initialized. Check GOOGLE_API_KEY and server logs.")
+        return jsonify({
+            "movie_title": movie_title,
+            "user_question": user_question,
+            "answer": "Error: AI question answering service not available. Please check server logs."
+        }), 500
 
     print(f"Received request for movie: '{movie_title}', question: '{user_question}'")
 
-    # 1. Scrape the script
+    # 1. Get the script (from cache or scrape)
     script_documents = scrape_script_given_name(movie_title)
 
-    if not script_documents or len(script_documents[0].page_content) < 1000:
+    if not script_documents: # This means scraping failed or returned None
         print(f"Script not found or failed to scrape for '{movie_title}'.")
-        return render_template(
-            'result.html',
-            movie_title=movie_title,
-            user_question=user_question,
-            answer=f"Could not find or scrape the script for '{movie_title}' on IMSDb. Please check the movie title and try again."
-        )
+        return jsonify({
+            "movie_title": movie_title,
+            "user_question": user_question,
+            "answer": f"Could not find or scrape the script for '{movie_title}'. Please check the movie title and try again."
+        })
+    
+    # Check if script content is substantial enough (e.g., more than a few hundred characters)
+    # This is a basic check for empty or placeholder scripts.
+    if len(script_documents[0].page_content) < 500: # Adjust threshold as needed
+        print(f"Script for '{movie_title}' seems too short or is a placeholder. Length: {len(script_documents[0].page_content)}")
+        return jsonify({
+            "movie_title": movie_title,
+            "user_question": user_question,
+            "answer": f"The script found for '{movie_title}' appears to be incomplete or a placeholder. Please try a different movie or check the source."
+        })
 
-    print(f"Successfully scraped script for '{movie_title}'. Length: {len(script_documents[0].page_content)} characters.")
+
+    print(f"Using script for '{movie_title}'. Length: {len(script_documents[0].page_content)} characters.")
 
     # 2. Use Langchain QA chain to answer the question
     try:
-        # The map_reduce chain expects 'input_documents' and 'question'
-        prompt = f"""You are a movie script expert. Answer the question below based on the script provided.
+        # Updated prompt to be more conversational and context-aware
+        prompt_template = ChatPromptTemplate.from_messages([
+            SystemMessagePromptTemplate.from_template(
+                "You are a helpful movie script expert. Your goal is to answer questions based ONLY on the provided movie script content. "
+                "Do not use any external knowledge. If the answer isn't in the script, say so. "
+                "Be concise and directly answer the user's question."
+                "If the user asks about a character, focus on their actions, dialogue, and descriptions within the script up to the point relevant to their query (if specified)."
+                "If the user seems confused or asks for a recap, summarize key plot points and character involvements from the script relevant to their query."
+                "Avoid spoilers beyond what would be known at a certain point if the user indicates their viewing progress."
+            ),
+            HumanMessagePromptTemplate.from_template("Context from script:\n-----\n{context}\n-----\nQuestion: {question}")
+        ])
         
-        Question: {user_question}
+        # Recreate the chain with the new prompt if you want to use this detailed prompt with "stuff"
+        # For "map_reduce", the prompt is handled differently within the chain's map and combine steps.
+        # If using "stuff", you might pass the prompt directly or structure it for the chain's `run` or `invoke` method.
+        # The `load_qa_chain` with `chain_type="stuff"` generally takes a prompt for the llm_chain it creates.
+        # Let's try a simpler direct question for now, assuming the system message of the ChatGoogleGenerativeAI and the chain handle it.
+        
+        # Your existing qa_chain (e.g., `stuff` or `map_reduce`)
+        # The `run` method typically takes `input_documents` and the `question`.
+        # The prompt you constructed earlier can be part of the `question` input.
 
-        If the user's question indicates approximately where they are in the movie, answer only with information up to that point.
-        Do not include any spoilers or information that occurs later in the movie.
+        # Constructing the input for the qa_chain.run
+        # The system-level instructions are good for the ChatGoogleGenerativeAI model's initialization.
+        # For the specific question, we combine the user's question with guidance.
+        
+        # This is the prompt that will be directly processed by the LLM for the given documents
+        # It's important for the "stuff" chain type, as it stuffs all docs into one prompt.
+        # For "map_reduce", you'd have separate map and combine prompts.
+        
+        # Let's stick to the simpler approach of passing the user's question directly,
+        # relying on the LLM's general instruction following capabilities and the chain's design.
+        # The more complex prompt above might be better integrated by customizing the chain's internal prompt template.
 
-        If the user is confused be sure to include important plot points and characters up to that point in the movie.
-        If the user is asking about a character, be sure to include important plot points up to that point in the movie.
-        """
-        answer = qa_chain.run(input_documents=script_documents, question=prompt)
+        # If your qa_chain is `load_qa_chain(llm, chain_type="stuff")` it should work with:
+        answer = qa_chain.run(input_documents=script_documents, question=prompt_template)
+        
+        # If you want to use the more detailed ChatPromptTemplate with a "stuff" chain,
+        # you might need to customize the underlying LLMChain's prompt within load_qa_chain,
+        # or use a more direct approach with LCEL (LangChain Expression Language).
+
+        # For now, keeping your original `qa_chain.run()` call:
+        # The prompt you had before:
+        #  prompt_for_llm = f"""You are a movie script expert. Answer the question below based on the script provided.
+        # Question: {user_question}
+        # If the user's question indicates approximately where they are in the movie, answer only with information up to that point.
+        # Do not include any spoilers or information that occurs later in the movie.
+        # If the user is confused be sure to include important plot points and characters up to that point in the movie.
+        # If the user is asking about a character, be sure to include important plot points up to that point in the movie.
+        # """
+        # answer = qa_chain.run(input_documents=script_documents, question=prompt_for_llm)
+
 
         print(f"Successfully generated answer for '{movie_title}'.")
 
-        return render_template(
-            'result.html',
-            movie_title=movie_title,
-            user_question=user_question,
-            answer=answer
-        )
+        return jsonify({
+            "movie_title": movie_title,
+            "user_question": user_question,
+            "answer": answer
+        })
 
     except Exception as e:
         print(f"Error during Langchain QA process for '{movie_title}': {e}")
-        # This could be due to LLM API issues, rate limits, context window limits etc.
-        return render_template(
-            'result.html',
-            movie_title=movie_title,
-            user_question=user_question,
-            answer=f"An error occurred while trying to answer your question using the script. Error: {e}"
-        )
+        return jsonify({
+            "movie_title": movie_title,
+            "user_question": user_question,
+            "answer": f"An error occurred while trying to answer your question using the script. Error: {e}"
+        }), 500
     
 # --- New Route for Suggestions ---
 @app.route('/suggest_movies')
