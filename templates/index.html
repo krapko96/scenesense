@@ -85,7 +85,6 @@
             font-weight: 500;
             transition: background-color 0.2s ease-in-out;
             align-self: flex-start;
-            /* Align button to the start of the flex container */
         }
 
         button[type="submit"]:hover {
@@ -97,13 +96,11 @@
             cursor: not-allowed;
         }
 
-        /* --- Styles for Suggestions Box --- */
         #suggestions-box {
             position: absolute;
             top: 100%;
             left: 0;
             right: 0;
-            /* Make it full width of the form-group */
             border: 1px solid #ddd;
             border-top: none;
             background-color: white;
@@ -112,7 +109,6 @@
             max-height: 200px;
             overflow-y: auto;
             display: none;
-            /* Hidden by default */
             border-radius: 0 0 5px 5px;
         }
 
@@ -130,14 +126,12 @@
             background-color: #f0f0f0;
         }
 
-        /* --- Styles for Chat Display --- */
         #chat-display {
             margin-top: 30px;
             border: 1px solid #e0e0e0;
             border-radius: 5px;
             padding: 15px;
             max-height: 400px;
-            /* Or your preferred height */
             overflow-y: auto;
             background-color: #f9f9f9;
         }
@@ -147,49 +141,46 @@
             padding: 10px;
             border-radius: 5px;
             word-wrap: break-word;
-            /* Ensure long words break */
         }
 
         .user-message {
             background-color: #e1f5fe;
-            /* Light blue for user */
             text-align: right;
             margin-left: auto;
-            /* Push to the right */
             max-width: 80%;
         }
 
         .user-message p strong {
             color: #01579b;
-            /* Darker blue for user label */
         }
 
         .bot-message {
             background-color: #e8f5e9;
-            /* Light green for bot */
             text-align: left;
             margin-right: auto;
-            /* Push to the left */
             max-width: 80%;
         }
 
         .bot-message p strong {
             color: #1b5e20;
-            /* Darker green for bot label */
         }
 
         .bot-message pre {
-            /* Style for preformatted text in bot's answer */
             white-space: pre-wrap;
-            /* Allows text to wrap */
             word-wrap: break-word;
-            /* Breaks long words */
             background-color: transparent;
             padding: 0;
             margin: 0;
             font-family: inherit;
-            /* Inherit font from parent */
             font-size: 0.95rem;
+        }
+
+        .system-message p {
+            /* Style for optional system messages */
+            font-style: italic;
+            color: #555;
+            text-align: center;
+            margin: 5px 0;
         }
 
         .loading-indicator {
@@ -201,9 +192,7 @@
 
         .error-message {
             color: #D8000C;
-            /* Red for errors */
             background-color: #FFD2D2;
-            /* Light red background */
             border: 1px solid #D8000C;
             padding: 10px;
             margin-top: 10px;
@@ -215,9 +204,8 @@
 
 <body>
     <div class="container">
-        <h1>Chat About a Movie Script</h1>
-        <p>Enter a movie title (as it appears on IMSDb.com or your list) and ask a question. The AI will use the script
-            to answer.</p>
+        <h1>What the F*** is happening in this Movie??</h1>
+        <p>Have you found yourself hopelessly confused during a movie? If so then this is the app for you.</p>
 
         <form id="chat-form">
             <div class="form-group">
@@ -251,13 +239,66 @@
 
         let currentMovieTitle = ""; // To keep track of the movie being discussed
 
+        // --- Function to handle movie change and reset chat ---
+        async function handleMovieChange(newMovieTitle) {
+            newMovieTitle = newMovieTitle.trim();
+
+            if (newMovieTitle && newMovieTitle !== currentMovieTitle) {
+                console.log(`Movie changed from "${currentMovieTitle}" to "${newMovieTitle}". Resetting chat.`);
+                chatDisplay.innerHTML = ''; // Clear visual chat
+
+                if (currentMovieTitle) { // Only clear server history if there was a previous movie
+                    await clearServerChatHistory(currentMovieTitle);
+                }
+                currentMovieTitle = newMovieTitle; // Update to the new movie
+                // addMessageToChat(`Now chatting about: ${currentMovieTitle}`, 'system'); // Optional system message
+            } else if (!newMovieTitle && currentMovieTitle) {
+                // Movie title was cleared, and there was a previous movie context
+                console.log(`Movie title cleared. Resetting chat for "${currentMovieTitle}".`);
+                chatDisplay.innerHTML = '';
+                await clearServerChatHistory(currentMovieTitle);
+                currentMovieTitle = "";
+            }
+        }
+
+        // --- Function to call the backend to clear chat history ---
+        async function clearServerChatHistory(movieTitleToClear) {
+            if (!movieTitleToClear) return;
+            console.log(`Requesting server to clear chat history for: ${movieTitleToClear}`);
+            try {
+                // Ensure your Flask route is named 'clear_chat_history_route'
+                const response = await fetch("{{ url_for('clear_chat_history_route') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        movie_title: movieTitleToClear
+                    }),
+                });
+                if (!response.ok) {
+                    let errorMsg = `Failed to clear server chat history for "${movieTitleToClear}". Status: ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMsg += ` Server: ${errorData.error || response.statusText}`;
+                    } catch (e) { /* ignore if response is not JSON */ }
+                    console.error(errorMsg);
+                } else {
+                    const result = await response.json();
+                    console.log(`Server response for clearing chat history for "${movieTitleToClear}": ${result.message}`);
+                }
+            } catch (error) {
+                console.error(`Error calling /clear_chat_history for "${movieTitleToClear}":`, error);
+            }
+        }
+
         // --- Movie Suggestions Logic ---
         movieTitleInput.addEventListener('input', async () => {
             const query = movieTitleInput.value.trim();
             suggestionsBox.innerHTML = '';
             suggestionsBox.style.display = 'none';
 
-            if (query.length > 1) {
+            if (query.length > 1) { // Fetch suggestions if query is more than 1 char
                 try {
                     const response = await fetch(`/suggest_movies?query=${encodeURIComponent(query)}`);
                     if (!response.ok) {
@@ -269,9 +310,10 @@
                         suggestions.forEach(suggestionText => {
                             const suggestionElement = document.createElement('div');
                             suggestionElement.textContent = suggestionText;
-                            suggestionElement.addEventListener('click', () => {
-                                movieTitleInput.value = suggestionText;
-                                currentMovieTitle = suggestionText; // Set current movie
+                            suggestionElement.addEventListener('click', async () => {
+                                const newSelectedMovie = suggestionText;
+                                movieTitleInput.value = newSelectedMovie; // Update input field
+                                await handleMovieChange(newSelectedMovie); // Handle change & reset chat
                                 suggestionsBox.innerHTML = '';
                                 suggestionsBox.style.display = 'none';
                                 userQuestionInput.focus(); // Focus on question input
@@ -286,51 +328,51 @@
             }
         });
 
+        // Hide suggestions if clicked outside input or suggestions box
         document.addEventListener('click', (event) => {
             if (!movieTitleInput.contains(event.target) && !suggestionsBox.contains(event.target)) {
                 suggestionsBox.style.display = 'none';
             }
         });
 
+        // Handle movie change if user types and then blurs the input
+        movieTitleInput.addEventListener('blur', async () => {
+            // Only call handleMovieChange if the suggestion box is not currently displayed.
+            // This prevents handleMovieChange from being called twice if a suggestion is clicked (once on click, once on blur).
+            if (suggestionsBox.style.display === 'none') {
+                await handleMovieChange(movieTitleInput.value);
+            }
+        });
+
         // --- Chat Form Submission Logic ---
         chatForm.addEventListener('submit', async function (event) {
-            event.preventDefault(); // Prevent traditional form submission
+            event.preventDefault();
 
-            const movieTitle = movieTitleInput.value.trim();
+            const movieTitleFromInput = movieTitleInput.value.trim();
             const userQuestion = userQuestionInput.value.trim();
 
-            if (!movieTitle || !userQuestion) {
+            if (!movieTitleFromInput || !userQuestion) {
                 displayError("Please enter both a movie title and your question.");
                 return;
             }
 
-            // If the movie title input is different from the currentMovieTitle,
-            // we might consider it a new context or ask the user to confirm.
-            // For now, we'll just use the current input value.
-            if (movieTitle !== currentMovieTitle && currentMovieTitle !== "") {
-                // Optional: Clear chat if movie changes, or add a separator
-                // chatDisplay.innerHTML += `<div class="chat-message system-message"><p><i>Switched to movie: ${movieTitle}</i></p></div>`;
-                console.log(`Movie title changed from "${currentMovieTitle}" to "${movieTitle}"`);
-            }
-            currentMovieTitle = movieTitle;
+            await handleMovieChange(movieTitleFromInput); // Ensure context is set/reset
 
-
-            // Display user's question immediately
-            addMessageToChat(userQuestion, 'user', movieTitle);
-            userQuestionInput.value = ''; // Clear the question input
+            addMessageToChat(userQuestion, 'user', currentMovieTitle);
+            userQuestionInput.value = '';
             submitButton.disabled = true;
             addLoadingIndicator();
             hideError();
 
-
             try {
+                // Ensure your Flask route is named 'ask_movie_question'
                 const response = await fetch("{{ url_for('ask_movie_question') }}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        movie_title: movieTitle,
+                        movie_title: currentMovieTitle, // Send the definitive currentMovieTitle
                         user_question: userQuestion
                     }),
                 });
@@ -344,7 +386,7 @@
                         const errorData = await response.json();
                         errorMsg = errorData.answer || errorData.error || 'An unknown error occurred.';
                     } catch (e) { /* Ignore if response is not JSON */ }
-                    addMessageToChat(`Failed to get answer. ${errorMsg}`, 'bot-error', movieTitle);
+                    addMessageToChat(`Failed to get answer. ${errorMsg}`, 'bot-error', currentMovieTitle);
                     displayError(`Server error: ${errorMsg}`);
                     return;
                 }
@@ -356,48 +398,53 @@
                 removeLoadingIndicator();
                 submitButton.disabled = false;
                 console.error('Network error or other issue:', error);
-                addMessageToChat(`An error occurred while sending your question: ${error.message}`, 'bot-error', movieTitle);
+                addMessageToChat(`An error occurred while sending your question: ${error.message}`, 'bot-error', currentMovieTitle);
                 displayError(`Network error: ${error.message}`);
             }
         });
 
-        function addMessageToChat(message, sender, movieContext = "") {
+        function addMessageToChat(message, sender, movieContextParam = "") {
             const messageElement = document.createElement('div');
             messageElement.classList.add('chat-message');
             let senderPrefix = "";
+            // Use currentMovieTitle as the primary context if movieContextParam is empty
+            let effectiveMovieContext = movieContextParam || currentMovieTitle || "Movie";
+
 
             if (sender === 'user') {
                 messageElement.classList.add('user-message');
                 senderPrefix = "You";
             } else if (sender === 'bot') {
                 messageElement.classList.add('bot-message');
-                senderPrefix = `Script Bot (${movieContext || currentMovieTitle})`;
+                senderPrefix = `Script Bot (${effectiveMovieContext})`;
             } else if (sender === 'bot-error') {
                 messageElement.classList.add('bot-message'); // Style like a bot message but indicates error
-                senderPrefix = `Script Bot (${movieContext || currentMovieTitle})`;
+                senderPrefix = `Script Bot (${effectiveMovieContext})`;
                 messageElement.style.backgroundColor = '#ffebee'; // Light red for errors from bot
                 messageElement.style.borderColor = '#c62828';
+            } else if (sender === 'system') {
+                messageElement.classList.add('system-message');
+                messageElement.innerHTML = `<p><em>${message}</em></p>`;
+                chatDisplay.appendChild(messageElement);
+                chatDisplay.scrollTop = chatDisplay.scrollHeight;
+                return; // Handled system message, no further processing needed for it
             }
 
-
-            // For bot messages, we expect the answer to be preformatted if it's code/script like
-            // For user messages, just paragraph
             const contentElement = document.createElement('p');
-            contentElement.innerHTML = `<strong>${senderPrefix}:</strong> `; // Use innerHTML to render strong tag
+            contentElement.innerHTML = `<strong>${senderPrefix}:</strong> `;
 
+            // Append actual message text, handling newlines for bot/error messages
             if (sender === 'bot' || sender === 'bot-error') {
-                // If the message contains newlines, it might be preformatted text
-                if (message.includes('\n')) {
+                if (message && message.includes('\n')) {
                     const preElement = document.createElement('pre');
                     preElement.textContent = message;
                     contentElement.appendChild(preElement);
                 } else {
-                    contentElement.appendChild(document.createTextNode(message));
+                    contentElement.appendChild(document.createTextNode(message || ""));
                 }
-            } else {
-                contentElement.appendChild(document.createTextNode(message));
+            } else { // For 'user' messages
+                contentElement.appendChild(document.createTextNode(message || ""));
             }
-
 
             messageElement.appendChild(contentElement);
             chatDisplay.appendChild(messageElement);
@@ -405,6 +452,8 @@
         }
 
         function addLoadingIndicator() {
+            // Avoid adding multiple loading indicators
+            if (document.getElementById('loading')) return;
             const loadingElement = document.createElement('div');
             loadingElement.classList.add('loading-indicator');
             loadingElement.id = 'loading';
@@ -428,7 +477,6 @@
         function hideError() {
             errorDisplay.style.display = 'none';
         }
-
     </script>
 
 </body>

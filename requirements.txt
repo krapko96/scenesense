@@ -4,3 +4,4 @@ requests==2.32.3 # Or a recent version
 langchain==0.3.25 # Or a recent version
 langchain-community==0.3.23 # Or a recent version
 gunicorn==23.0.0 # Used by hosting platforms to run the app
+langchain-google-genai==2.1.4

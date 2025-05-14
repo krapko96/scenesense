@@ -50,7 +50,6 @@ except Exception as e:
 # Or configure it on your hosting provider's dashboard (e.g., Render, PythonAnywhere)
 # Do NOT hardcode your API key here!
 if not os.environ.get("GOOGLE_API_KEY"):
-    os.environ["GOOGLE_API_KEY"] = 'AIzaSyAy7dfDNT-gMXSRJYdqJY73H3cZKNDrAN0'
     print("Warning: GOOGLE_API_KEY environment variable not set.")
     print("Please set it before running the app or deployment will fail.")
     # As a fallback for local testing (REMOVE THIS IN PRODUCTION!):
@@ -260,6 +259,24 @@ def suggest_movies():
 
     return jsonify(suggestions) # Return suggestions as JSON
 
+
+@app.route('/clear_chat_history', methods=['POST'])
+def clear_chat_history_route():
+    data = request.get_json()
+    movie_title_to_clear = data.get('movie_title', '').strip()
+
+    if not movie_title_to_clear:
+        return jsonify({"error": "Movie title is required to clear history."}), 400
+
+    session_history_key = f"chat_history_{movie_title_to_clear.replace(' ', '_').lower()}"
+    if session_history_key in session:
+        del session[session_history_key]
+        session.modified = True # Ensure session is saved after deletion
+        print(f"Chat history cleared for movie: '{movie_title_to_clear}'")
+        return jsonify({"message": f"Chat history for '{movie_title_to_clear}' cleared successfully."}), 200
+    else:
+        print(f"No chat history found in session for movie: '{movie_title_to_clear}'")
+        return jsonify({"message": f"No chat history to clear for '{movie_title_to_clear}'."}), 200
 
 if __name__ == '__main__':
     # This is for local development only.
