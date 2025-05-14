@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session
 
 # Langchain specific imports
 # Use correct imports based on your Langchain/community package version
@@ -23,6 +23,10 @@ except ImportError:
 
 
 app = Flask(__name__)
+
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "your_default_super_secret_key_for_dev")
+if app.secret_key == "your_default_super_secret_key_for_dev" and os.environ.get("FLASK_ENV") != "development":
+    print("Warning: Using default Flask secret key. Please set a strong FLASK_SECRET_KEY environment variable for production.")
 
 # --- Load Movie Titles from movies.txt ---
 MOVIE_LIST = []
@@ -129,9 +133,10 @@ def index():
 def ask_movie_question():
     """
     Receives movie title and question, scrapes script (if not cached),
-    asks question using Langchain/Gemini, and returns JSON response.
+    asks question using Langchain/Gemini with conversation history,
+    and returns JSON response.
     """
-    data = request.get_json() # Get data as JSON
+    data = request.get_json()
     movie_title = data.get('movie_title', '').strip()
     user_question = data.get('user_question', '').strip()
 
@@ -140,8 +145,8 @@ def ask_movie_question():
             "error": "Movie title and question are required."
         }), 400
 
-    if qa_chain is None or llm is None:
-        print("Error: QA chain or LLM not initialized. Check GOOGLE_API_KEY and server logs.")
+    if llm is None: # Simplified check as qa_chain is not directly used with llm.invoke for the main logic now
+        print("Error: LLM not initialized. Check GOOGLE_API_KEY and server logs.")
         return jsonify({
             "movie_title": movie_title,
             "user_question": user_question,
@@ -150,82 +155,83 @@ def ask_movie_question():
 
     print(f"Received request for movie: '{movie_title}', question: '{user_question}'")
 
-    # 1. Get the script (from cache or scrape)
     script_documents = scrape_script_given_name(movie_title)
 
-    if not script_documents: # This means scraping failed or returned None
+    if not script_documents:
         print(f"Script not found or failed to scrape for '{movie_title}'.")
         return jsonify({
             "movie_title": movie_title,
             "user_question": user_question,
             "answer": f"Could not find or scrape the script for '{movie_title}'. Please check the movie title and try again."
         })
-    
-    # Check if script content is substantial enough (e.g., more than a few hundred characters)
-    # This is a basic check for empty or placeholder scripts.
-    if len(script_documents[0].page_content) < 500: # Adjust threshold as needed
-        print(f"Script for '{movie_title}' seems too short or is a placeholder. Length: {len(script_documents[0].page_content)}")
+
+    if len(script_documents[0].page_content) < 500:
+        print(f"Script for '{movie_title}' seems too short. Length: {len(script_documents[0].page_content)}")
         return jsonify({
             "movie_title": movie_title,
             "user_question": user_question,
-            "answer": f"The script found for '{movie_title}' appears to be incomplete or a placeholder. Please try a different movie or check the source."
+            "answer": f"The script found for '{movie_title}' appears to be incomplete. Please try a different movie."
         })
-
 
     print(f"Using script for '{movie_title}'. Length: {len(script_documents[0].page_content)} characters.")
 
-    # 2. Use Langchain QA chain to answer the question
     try:
-        prompt_string = f"""You are a helpful movie script expert. Your goal is to answer questions based ONLY on the provided movie script content. "
-            Do not use any external knowledge. If the answer isn't in the script, say so. 
-            Be concise and directly answer the user's question.
-            If the user asks about a character, focus on their actions, dialogue, and descriptions within the script up to the point relevant to their query (if specified).
-            If the user seems confused or asks for a recap, summarize key plot points and character involvements from the script relevant to their query.
-            Avoid spoilers beyond what would be known at a certain point if the user indicates their viewing progress.
-            Here is a movie script:
-            # --- SCRIPT START ---
-            # {script_documents[0].page_content}
-            # --- SCRIPT END ---
+        # Retrieve chat history for the current movie from session
+        session_history_key = f"chat_history_{movie_title.replace(' ', '_').lower()}" # Make key session-friendly
+        chat_history = session.get(session_history_key, [])
 
-            # Based on this script, please answer the following question:
-            # Question: {user_question}
-            #
-            # Answer:"""
+        formatted_history = ""
+        if chat_history:
+            formatted_history += "Context from our previous conversation about this movie:\n"
+            for entry in chat_history:
+                formatted_history += f"Your previous question: {entry['user']}\nMy previous answer: {entry['ai']}\n\n"
+            formatted_history += "---\n"
 
-        answer = llm.invoke(prompt_string).content
-        
-        
-        # If you want to use the more detailed ChatPromptTemplate with a "stuff" chain,
-        # you might need to customize the underlying LLMChain's prompt within load_qa_chain,
-        # or use a more direct approach with LCEL (LangChain Expression Language).
+        prompt_string = f"""You are a helpful movie script expert. Your goal is to answer questions based ONLY on the provided movie script content AND the conversation history if available.
+        Do not use any external knowledge. If the answer isn't in the script or derivable from it considering the history, state that clearly.
+        Be concise and directly answer the user's question.
+        If the user refers to previous parts of our conversation, use that context intelligently.
 
-        # For now, keeping your original `qa_chain.run()` call:
-        # The prompt you had before:
-        #  prompt_for_llm = f"""You are a movie script expert. Answer the question below based on the script provided.
-        # Question: {user_question}
-        # If the user's question indicates approximately where they are in the movie, answer only with information up to that point.
-        # Do not include any spoilers or information that occurs later in the movie.
-        # If the user is confused be sure to include important plot points and characters up to that point in the movie.
-        # If the user is asking about a character, be sure to include important plot points up to that point in the movie.
-        # """
-        # answer = qa_chain.run(input_documents=script_documents, question=prompt_for_llm)
+        Here is the movie script:
+        --- SCRIPT START ---
+        {script_documents[0].page_content}
+        --- SCRIPT END ---
 
+        {formatted_history}Based on the script AND the conversation history (if any), please answer the following new question about the movie "{movie_title}":
+        New Question: {user_question}
 
+        Answer:"""
+
+        # Make sure your LLM can handle the combined length of script + history + question.
+        # If it's too long, you might need to truncate the script or history.
+        ai_response = llm.invoke(prompt_string).content
+
+        # Update chat history in session
+        # Limit history length to prevent excessively large sessions/prompts
+        max_history_length = 10 # Keep last 5 Q&A pairs (10 entries)
+        chat_history.append({"user": user_question, "ai": ai_response})
+        if len(chat_history) > max_history_length:
+            chat_history = chat_history[-max_history_length:]
+        session[session_history_key] = chat_history
+        session.modified = True # Ensure session is saved
 
         print(f"Successfully generated answer for '{movie_title}'.")
 
         return jsonify({
             "movie_title": movie_title,
             "user_question": user_question,
-            "answer": answer
+            "answer": ai_response
         })
 
     except Exception as e:
         print(f"Error during Langchain QA process for '{movie_title}': {e}")
+        # Log the full error for debugging, but return a generic message to the user.
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "movie_title": movie_title,
             "user_question": user_question,
-            "answer": f"An error occurred while trying to answer your question using the script. Error: {e}"
+            "answer": f"An error occurred while trying to answer your question. Please try again. Error details: {str(e)}"
         }), 500
     
 # --- New Route for Suggestions ---
