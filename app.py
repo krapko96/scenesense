@@ -186,17 +186,20 @@ def ask_movie_question():
                 formatted_history += f"Your previous question: {entry['user']}\nMy previous answer: {entry['ai']}\n\n"
             formatted_history += "---\n"
 
-        prompt_string = f"""You are a helpful movie script expert. Your goal is to answer questions based ONLY on the provided movie script content AND the conversation history if available.
-        Do not use any external knowledge. If the answer isn't in the script or derivable from it considering the history, state that clearly.
-        Be concise and directly answer the user's question.
+        prompt_string = f"""You are a movie expert. Your goal is to answer questions based on the provided movie script content AND the conversation history if available AND what you know about the movie.
+        You should be very cautious about making up information or spoiling the movie.
         If the user refers to previous parts of our conversation, use that context intelligently.
+        Do not be afraid to ask clarifying questions if the user's question is vague or could be interpreted in multiple ways.
+        You are allowed to reason about the question. You can provide some opinions about why that scene is important, what the director was trying to convey, etc.
 
         Here is the movie script:
         --- SCRIPT START ---
         {script_documents[0].page_content}
         --- SCRIPT END ---
 
-        {formatted_history}Based on the script AND the conversation history (if any), please answer the following new question about the movie "{movie_title}":
+        {formatted_history}
+        
+        Based on the script AND the conversation history (if any), please answer the following new question about the movie "{movie_title}":
         New Question: {user_question}
 
         Answer:"""
