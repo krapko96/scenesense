@@ -4,118 +4,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat About a Movie Script</title>
+    <title>Chat About a Movie Script - Enhanced UI</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --primary-color: #007bff;
+            /* Vibrant Blue */
+            --primary-hover-color: #0056b3;
+            /* Darker Blue */
+            --secondary-color: #6c757d;
+            /* Cool Gray */
+            --background-color: #f0f2f5;
+            /* Lightest Gray, almost white */
+            --container-bg-color: #ffffff;
+            /* White */
+            --text-color: #333333;
+            /* Dark Gray for text */
+            --text-light-color: #555555;
+            /* Lighter Gray for secondary text */
+            --border-color: #dee2e6;
+            /* Light Gray for borders */
+            --input-border-color: #ced4da;
+            --input-focus-border-color: #80bdff;
+            /* Light blue for focus */
+            --success-color: #28a745;
+            /* Green */
+            --error-color: #dc3545;
+            /* Red */
+            --user-message-bg: #e7f3ff;
+            /* Light blue for user messages */
+            --bot-message-bg: #f8f9fa;
+            /* Very light gray for bot messages */
+            --font-family: 'Poppins', sans-serif;
+            --border-radius: 8px;
+            /* Consistent border radius */
+            --box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+            /* Softer shadow */
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: var(--font-family);
             margin: 0;
-            padding: 0;
-            background-color: #f4f7f6;
-            color: #333;
+            padding: 20px;
+            /* Add some padding around */
+            background-color: var(--background-color);
+            color: var(--text-color);
             display: flex;
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
+            line-height: 1.6;
         }
 
         .container {
             width: 90%;
             max-width: 800px;
-            background-color: #fff;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            margin-top: 20px;
+            background-color: var(--container-bg-color);
+            padding: 30px 40px;
+            /* Increased padding */
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            margin-top: 30px;
         }
 
         h1 {
-            color: #007bff;
+            color: var(--primary-color);
             text-align: center;
-            margin-bottom: 25px;
+            margin-bottom: 15px;
+            /* Reduced margin */
+            font-weight: 600;
+            /* Slightly bolder */
+        }
+
+        .subtitle {
+            /* New class for the intro paragraph */
+            text-align: center;
+            color: var(--text-light-color);
+            margin-bottom: 30px;
+            font-size: 1.1rem;
         }
 
         form {
             margin-top: 20px;
             display: flex;
             flex-direction: column;
+            gap: 20px;
+            /* Add gap between form elements */
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 0;
+            /* Removed as gap is used in form */
             position: relative;
         }
 
         label {
             display: block;
             margin-bottom: 8px;
-            font-weight: 600;
-            color: #555;
+            font-weight: 500;
+            /* Slightly lighter */
+            color: var(--text-light-color);
+            font-size: 0.95rem;
         }
 
         input[type="text"],
         textarea {
             width: 100%;
-            padding: 12px;
+            padding: 12px 15px;
+            /* Increased padding */
             box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            border: 1px solid var(--input-border-color);
+            border-radius: var(--border-radius);
             font-size: 1rem;
-            transition: border-color 0.2s ease-in-out;
+            font-family: var(--font-family);
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         }
 
         input[type="text"]:focus,
         textarea:focus {
-            border-color: #007bff;
+            border-color: var(--input-focus-border-color);
             outline: none;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            /* Bootstrap-like focus */
         }
 
         textarea {
             resize: vertical;
-            min-height: 80px;
+            min-height: 100px;
+            /* Increased min-height */
         }
 
         button[type="submit"] {
-            padding: 12px 25px;
-            background-color: #007bff;
+            padding: 12px 30px;
+            /* Increased padding */
+            background-color: var(--primary-color);
             color: white;
             border: none;
             cursor: pointer;
-            border-radius: 5px;
-            font-size: 1rem;
+            border-radius: var(--border-radius);
+            font-size: 1.05rem;
+            /* Slightly larger */
             font-weight: 500;
-            transition: background-color 0.2s ease-in-out;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease;
             align-self: flex-start;
+            /* Keep this if you want button left-aligned */
+            /* To center the button: align-self: center; margin-top: 10px; */
         }
 
         button[type="submit"]:hover {
-            background-color: #0056b3;
+            background-color: var(--primary-hover-color);
+            transform: translateY(-2px);
+            /* Subtle lift effect */
         }
 
         button[type="submit"]:disabled {
             background-color: #cccccc;
             cursor: not-allowed;
+            transform: none;
         }
 
         #suggestions-box {
             position: absolute;
-            top: 100%;
+            top: calc(100% + 5px);
+            /* Add small gap */
             left: 0;
             right: 0;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color);
             border-top: none;
-            background-color: white;
+            background-color: var(--container-bg-color);
             z-index: 1000;
-            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
-            max-height: 200px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+            /* Enhanced shadow */
+            max-height: 220px;
             overflow-y: auto;
             display: none;
-            border-radius: 0 0 5px 5px;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
         }
 
         #suggestions-box div {
-            padding: 10px 12px;
+            padding: 12px 15px;
             cursor: pointer;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
         }
 
         #suggestions-box div:last-child {
@@ -123,46 +194,67 @@
         }
 
         #suggestions-box div:hover {
-            background-color: #f0f0f0;
+            background-color: var(--background-color);
+            /* Use body background for hover */
+            color: var(--primary-color);
         }
 
         #chat-display {
-            margin-top: 30px;
-            border: 1px solid #e0e0e0;
-            border-radius: 5px;
-            padding: 15px;
-            max-height: 400px;
+            margin-top: 35px;
+            /* Increased margin */
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            /* Increased padding */
+            max-height: 450px;
+            /* Increased max height */
             overflow-y: auto;
-            background-color: #f9f9f9;
+            background-color: #fdfdfd;
+            /* Slightly off-white for chat area */
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            /* Space between messages */
         }
 
         .chat-message {
-            margin-bottom: 15px;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 12px 18px;
+            /* Adjusted padding */
+            border-radius: var(--border-radius);
             word-wrap: break-word;
+            max-width: 85%;
+            /* Slightly wider messages */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            /* Subtle shadow on messages */
         }
 
         .user-message {
-            background-color: #e1f5fe;
+            background-color: var(--user-message-bg);
+            color: #004085;
+            /* Darker blue text for contrast */
             text-align: right;
             margin-left: auto;
-            max-width: 80%;
+            border-bottom-right-radius: 0;
+            /* "Tail" effect */
         }
 
         .user-message p strong {
-            color: #01579b;
+            color: var(--primary-color);
         }
 
         .bot-message {
-            background-color: #e8f5e9;
+            background-color: var(--bot-message-bg);
+            color: var(--text-color);
             text-align: left;
             margin-right: auto;
-            max-width: 80%;
+            border: 1px solid var(--border-color);
+            /* Subtle border for bot messages */
+            border-bottom-left-radius: 0;
+            /* "Tail" effect */
         }
 
         .bot-message p strong {
-            color: #1b5e20;
+            color: var(--secondary-color);
         }
 
         .bot-message pre {
@@ -171,32 +263,35 @@
             background-color: transparent;
             padding: 0;
             margin: 0;
-            font-family: inherit;
-            font-size: 0.95rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+            /* Monospace for code/pre */
+            font-size: 0.9rem;
+            color: var(--text-color);
         }
 
         .system-message p {
-            /* Style for optional system messages */
             font-style: italic;
-            color: #555;
+            color: var(--text-light-color);
             text-align: center;
-            margin: 5px 0;
+            margin: 10px 0;
+            font-size: 0.9rem;
         }
 
         .loading-indicator {
             text-align: center;
-            padding: 10px;
+            padding: 15px;
             font-style: italic;
-            color: #777;
+            color: var(--text-light-color);
         }
 
         .error-message {
-            color: #D8000C;
-            background-color: #FFD2D2;
-            border: 1px solid #D8000C;
-            padding: 10px;
-            margin-top: 10px;
-            border-radius: 5px;
+            color: var(--error-color);
+            background-color: #f8d7da;
+            /* Lighter red background */
+            border: 1px solid var(--error-color);
+            padding: 12px 15px;
+            margin-top: 20px;
+            border-radius: var(--border-radius);
             text-align: center;
         }
     </style>
@@ -205,21 +300,21 @@
 <body>
     <div class="container">
         <h1>What the f*** is happening in this Movie??</h1>
-        <p>Have you found yourself hopelessly confused during a movie? If so then this is the app for you.</p>
+        <p class="subtitle">Confused by a film's plot? Ask away, and let's untangle it together!</p>
 
         <form id="chat-form">
             <div class="form-group">
                 <label for="movie_title">Movie Title:</label>
-                <input type="text" id="movie_title" name="movie_title" required placeholder="e.g., Pulp Fiction">
+                <input type="text" id="movie_title" name="movie_title" required placeholder="e.g., Inception, Tenet">
                 <div id="suggestions-box"></div>
             </div>
             <div class="form-group">
                 <label for="user_question">Your Question:</label>
-                <textarea id="user_question" name="user_question" rows="3" required
-                    placeholder="e.g., What is the conversation about a Royale with Cheese?"></textarea>
+                <textarea id="user_question" name="user_question" rows="4" required
+                    placeholder="e.g., What were they trying to steal in Inception?"></textarea>
             </div>
             <div>
-                <button type="submit" id="submit-button">Send</button>
+                <button type="submit" id="submit-button">Send Question</button>
             </div>
         </form>
 
@@ -237,37 +332,49 @@
         const submitButton = document.getElementById('submit-button');
         const errorDisplay = document.getElementById('error-display');
 
-        let currentMovieTitle = ""; // To keep track of the movie being discussed
+        let currentMovieTitle = "";
 
-        // --- Function to handle movie change and reset chat ---
         async function handleMovieChange(newMovieTitle) {
             newMovieTitle = newMovieTitle.trim();
 
             if (newMovieTitle && newMovieTitle !== currentMovieTitle) {
                 console.log(`Movie changed from "${currentMovieTitle}" to "${newMovieTitle}". Resetting chat.`);
-                chatDisplay.innerHTML = ''; // Clear visual chat
+                // Optional: Visually clear chat immediately or wait for server confirmation
+                // chatDisplay.innerHTML = ''; // Clear visual chat
 
-                if (currentMovieTitle) { // Only clear server history if there was a previous movie
-                    await clearServerChatHistory(currentMovieTitle);
+                // Show a system message about the change
+                if (currentMovieTitle) { // Only show if there was a previous movie
+                    addMessageToChat(`Chat history for "${currentMovieTitle}" cleared. Now discussing "${newMovieTitle}".`, 'system');
+                } else {
+                    addMessageToChat(`Now discussing: "${newMovieTitle}".`, 'system');
                 }
-                currentMovieTitle = newMovieTitle; // Update to the new movie
-                // addMessageToChat(`Now chatting about: ${currentMovieTitle}`, 'system'); // Optional system message
+
+                await clearServerChatHistory(currentMovieTitle); // Clear old history
+                currentMovieTitle = newMovieTitle;
+                // No need to call addMessageToChat here again for the new movie context, handled above
+
+                // Clear the actual chat messages after server operations
+                const systemMessages = chatDisplay.querySelectorAll('.system-message');
+                chatDisplay.innerHTML = ''; // Clear all messages
+                systemMessages.forEach(msg => chatDisplay.appendChild(msg)); // Re-add system messages if needed or clear all
+
+
             } else if (!newMovieTitle && currentMovieTitle) {
-                // Movie title was cleared, and there was a previous movie context
                 console.log(`Movie title cleared. Resetting chat for "${currentMovieTitle}".`);
-                chatDisplay.innerHTML = '';
+                addMessageToChat(`Chat history for "${currentMovieTitle}" cleared as movie title was removed.`, 'system');
                 await clearServerChatHistory(currentMovieTitle);
                 currentMovieTitle = "";
+                // Clear the actual chat messages after server operations
+                chatDisplay.innerHTML = ''; // Clear all messages
+
             }
         }
 
-        // --- Function to call the backend to clear chat history ---
         async function clearServerChatHistory(movieTitleToClear) {
             if (!movieTitleToClear) return;
             console.log(`Requesting server to clear chat history for: ${movieTitleToClear}`);
             try {
-                // Ensure your Flask route is named 'clear_chat_history_route'
-                const response = await fetch("{{ url_for('clear_chat_history_route') }}", {
+                const response = await fetch("{{ url_for('clear_chat_history_route') }}", { // Ensure this URL is correctly resolved by your template engine
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -281,8 +388,9 @@
                     try {
                         const errorData = await response.json();
                         errorMsg += ` Server: ${errorData.error || response.statusText}`;
-                    } catch (e) { /* ignore if response is not JSON */ }
+                    } catch (e) { /* ignore */ }
                     console.error(errorMsg);
+                    // Optionally display this error to the user in a less intrusive way
                 } else {
                     const result = await response.json();
                     console.log(`Server response for clearing chat history for "${movieTitleToClear}": ${result.message}`);
@@ -292,14 +400,14 @@
             }
         }
 
-        // --- Movie Suggestions Logic ---
         movieTitleInput.addEventListener('input', async () => {
             const query = movieTitleInput.value.trim();
             suggestionsBox.innerHTML = '';
             suggestionsBox.style.display = 'none';
 
-            if (query.length > 1) { // Fetch suggestions if query is more than 1 char
+            if (query.length > 1) {
                 try {
+                    // Ensure this URL is correctly resolved by your template engine or is a static path
                     const response = await fetch(`/suggest_movies?query=${encodeURIComponent(query)}`);
                     if (!response.ok) {
                         console.error('Failed to fetch suggestions:', response.statusText);
@@ -312,11 +420,11 @@
                             suggestionElement.textContent = suggestionText;
                             suggestionElement.addEventListener('click', async () => {
                                 const newSelectedMovie = suggestionText;
-                                movieTitleInput.value = newSelectedMovie; // Update input field
-                                await handleMovieChange(newSelectedMovie); // Handle change & reset chat
+                                movieTitleInput.value = newSelectedMovie;
+                                // await handleMovieChange(newSelectedMovie); // Called on blur or submit
                                 suggestionsBox.innerHTML = '';
                                 suggestionsBox.style.display = 'none';
-                                userQuestionInput.focus(); // Focus on question input
+                                userQuestionInput.focus();
                             });
                             suggestionsBox.appendChild(suggestionElement);
                         });
@@ -328,23 +436,21 @@
             }
         });
 
-        // Hide suggestions if clicked outside input or suggestions box
         document.addEventListener('click', (event) => {
             if (!movieTitleInput.contains(event.target) && !suggestionsBox.contains(event.target)) {
                 suggestionsBox.style.display = 'none';
             }
         });
 
-        // Handle movie change if user types and then blurs the input
         movieTitleInput.addEventListener('blur', async () => {
-            // Only call handleMovieChange if the suggestion box is not currently displayed.
-            // This prevents handleMovieChange from being called twice if a suggestion is clicked (once on click, once on blur).
-            if (suggestionsBox.style.display === 'none') {
-                await handleMovieChange(movieTitleInput.value);
-            }
+            // Delay slightly to allow click on suggestion box to register
+            setTimeout(async () => {
+                if (suggestionsBox.style.display === 'none') {
+                    await handleMovieChange(movieTitleInput.value);
+                }
+            }, 100);
         });
 
-        // --- Chat Form Submission Logic ---
         chatForm.addEventListener('submit', async function (event) {
             event.preventDefault();
 
@@ -356,23 +462,28 @@
                 return;
             }
 
-            await handleMovieChange(movieTitleFromInput); // Ensure context is set/reset
+            // Ensure movie context is handled *before* adding message to chat
+            // This is important if the user types a new movie and hits send without blurring
+            if (movieTitleFromInput !== currentMovieTitle) {
+                await handleMovieChange(movieTitleFromInput);
+            }
 
-            addMessageToChat(userQuestion, 'user', currentMovieTitle);
+
+            addMessageToChat(userQuestion, 'user'); // movieContextParam will use currentMovieTitle
             userQuestionInput.value = '';
             submitButton.disabled = true;
             addLoadingIndicator();
             hideError();
 
             try {
-                // Ensure your Flask route is named 'ask_movie_question'
+                // Ensure this URL is correctly resolved by your template engine
                 const response = await fetch("{{ url_for('ask_movie_question') }}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        movie_title: currentMovieTitle, // Send the definitive currentMovieTitle
+                        movie_title: currentMovieTitle,
                         user_question: userQuestion
                     }),
                 });
@@ -385,20 +496,20 @@
                     try {
                         const errorData = await response.json();
                         errorMsg = errorData.answer || errorData.error || 'An unknown error occurred.';
-                    } catch (e) { /* Ignore if response is not JSON */ }
-                    addMessageToChat(`Failed to get answer. ${errorMsg}`, 'bot-error', currentMovieTitle);
+                    } catch (e) { /* Ignore */ }
+                    addMessageToChat(`Failed to get answer. ${errorMsg}`, 'bot-error');
                     displayError(`Server error: ${errorMsg}`);
                     return;
                 }
 
                 const data = await response.json();
-                addMessageToChat(data.answer, 'bot', data.movie_title);
+                addMessageToChat(data.answer, 'bot', data.movie_title); // Pass movie_title from response
 
             } catch (error) {
                 removeLoadingIndicator();
                 submitButton.disabled = false;
                 console.error('Network error or other issue:', error);
-                addMessageToChat(`An error occurred while sending your question: ${error.message}`, 'bot-error', currentMovieTitle);
+                addMessageToChat(`An error occurred: ${error.message}`, 'bot-error');
                 displayError(`Network error: ${error.message}`);
             }
         });
@@ -406,9 +517,12 @@
         function addMessageToChat(message, sender, movieContextParam = "") {
             const messageElement = document.createElement('div');
             messageElement.classList.add('chat-message');
+
             let senderPrefix = "";
-            // Use currentMovieTitle as the primary context if movieContextParam is empty
-            let effectiveMovieContext = movieContextParam || currentMovieTitle || "Movie";
+            let effectiveMovieContext = movieContextParam || currentMovieTitle; // Prioritize param, then current
+            if (effectiveMovieContext && effectiveMovieContext.length > 25) { // Truncate long movie titles
+                effectiveMovieContext = effectiveMovieContext.substring(0, 22) + "...";
+            }
 
 
             if (sender === 'user') {
@@ -416,24 +530,25 @@
                 senderPrefix = "You";
             } else if (sender === 'bot') {
                 messageElement.classList.add('bot-message');
-                senderPrefix = `Script Bot (${effectiveMovieContext})`;
+                senderPrefix = `Script Bot (${effectiveMovieContext || 'Info'})`;
             } else if (sender === 'bot-error') {
-                messageElement.classList.add('bot-message'); // Style like a bot message but indicates error
-                senderPrefix = `Script Bot (${effectiveMovieContext})`;
-                messageElement.style.backgroundColor = '#ffebee'; // Light red for errors from bot
-                messageElement.style.borderColor = '#c62828';
+                messageElement.classList.add('bot-message');
+                messageElement.style.backgroundColor = '#fff3f3';
+                messageElement.style.borderColor = '#ffc9c9';
+                messageElement.style.color = '#721c24';
+                senderPrefix = `Script Bot (${effectiveMovieContext || 'Error'})`;
             } else if (sender === 'system') {
                 messageElement.classList.add('system-message');
                 messageElement.innerHTML = `<p><em>${message}</em></p>`;
                 chatDisplay.appendChild(messageElement);
                 chatDisplay.scrollTop = chatDisplay.scrollHeight;
-                return; // Handled system message, no further processing needed for it
+                return;
             }
 
             const contentElement = document.createElement('p');
+            // Strong tag for prefix, then message content
             contentElement.innerHTML = `<strong>${senderPrefix}:</strong> `;
 
-            // Append actual message text, handling newlines for bot/error messages
             if (sender === 'bot' || sender === 'bot-error') {
                 if (message && message.includes('\n')) {
                     const preElement = document.createElement('pre');
@@ -442,22 +557,21 @@
                 } else {
                     contentElement.appendChild(document.createTextNode(message || ""));
                 }
-            } else { // For 'user' messages
+            } else {
                 contentElement.appendChild(document.createTextNode(message || ""));
             }
 
             messageElement.appendChild(contentElement);
             chatDisplay.appendChild(messageElement);
-            chatDisplay.scrollTop = chatDisplay.scrollHeight; // Scroll to the bottom
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
         }
 
         function addLoadingIndicator() {
-            // Avoid adding multiple loading indicators
             if (document.getElementById('loading')) return;
             const loadingElement = document.createElement('div');
             loadingElement.classList.add('loading-indicator');
             loadingElement.id = 'loading';
-            loadingElement.innerHTML = '<p><em>Thinking...</em></p>';
+            loadingElement.innerHTML = '<p><em>Conjuring cinematic wisdom...</em></p>'; // More thematic
             chatDisplay.appendChild(loadingElement);
             chatDisplay.scrollTop = chatDisplay.scrollHeight;
         }
@@ -477,6 +591,10 @@
         function hideError() {
             errorDisplay.style.display = 'none';
         }
+
+        // Initial system message if desired
+        // addMessageToChat("Welcome! Enter a movie title and your question to start.", "system");
+
     </script>
 
 </body>

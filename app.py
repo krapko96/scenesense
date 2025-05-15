@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 try:
     # Newer versions might be in langchain_community
     from langchain_community.document_loaders import IMSDbLoader
+    from langchain_core.documents import Document
     from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain.chains.question_answering import load_qa_chain
     from langchain.chains import LLMChain
@@ -15,6 +16,7 @@ except ImportError:
     # Fallback for older versions if needed, adjust based on your install
     print("Could not import from langchain_community or langchain_google_genai. Falling back to older imports (might not work with latest versions).")
     from langchain.document_loaders import IMSDbLoader
+    from langchain_core.documents import Document
     from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain.chains.question_answering import load_qa_chain
     from langchain.chains import LLMChain
@@ -157,20 +159,11 @@ def ask_movie_question():
     script_documents = scrape_script_given_name(movie_title)
 
     if not script_documents:
-        print(f"Script not found or failed to scrape for '{movie_title}'.")
-        return jsonify({
-            "movie_title": movie_title,
-            "user_question": user_question,
-            "answer": f"Could not find or scrape the script for '{movie_title}'. Please check the movie title and try again."
-        })
-
-    if len(script_documents[0].page_content) < 500:
-        print(f"Script for '{movie_title}' seems too short. Length: {len(script_documents[0].page_content)}")
-        return jsonify({
-            "movie_title": movie_title,
-            "user_question": user_question,
-            "answer": f"The script found for '{movie_title}' appears to be incomplete. Please try a different movie."
-        })
+        blank_document = Document(
+            page_content="No Script Found",
+            metadata={"source": "https://example.com"}
+        )
+        script_documents = [blank_document]
 
     print(f"Using script for '{movie_title}'. Length: {len(script_documents[0].page_content)} characters.")
 
@@ -191,6 +184,9 @@ def ask_movie_question():
         If the user refers to previous parts of our conversation, use that context intelligently.
         Do not be afraid to ask clarifying questions if the user's question is vague or could be interpreted in multiple ways.
         You are allowed to reason about the question. You can provide some opinions about why that scene is important, what the director was trying to convey, etc.
+
+        If the script is not available, you can answer based on your knowledge of the movie, but be careful not to spoil anything.
+        If you don't know the answer, say you don't know instead of making something up.
 
         Here is the movie script:
         --- SCRIPT START ---
